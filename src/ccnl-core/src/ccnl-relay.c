@@ -369,6 +369,7 @@ ccnl_interest_remove(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
     return i2;
 }
 
+bool sent_int=0;
 void
 ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
 {
@@ -391,7 +392,6 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
     // CCNL strategy: we forward on all FWD entries with a prefix match
 
     for (fwd = ccnl->fib; fwd; fwd = fwd->next) {
-        printf("fwd: %p\n", (void*)fwd);
         if (!fwd->prefix) {
             continue;
         }
@@ -432,7 +432,16 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
                 (fwd->tap)(ccnl, i->from, i->pkt->pfx, i->pkt->buf);
             }
             if (fwd->face) {
+                sent_int=1;
                 ccnl_send_pkt(ccnl, fwd->face, i->pkt);
+
+                // only print fwd here
+                if (i->from != loopback_face && i->retries == 0) {
+                    print_fwd_interest(i->pkt);
+                }
+                if(i->retries > 0) {
+                    print_retrans_send_interest(i->pkt);
+                }
             }
 #if defined(USE_RONR)
             matching_face = 1;
@@ -447,6 +456,9 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
         ccnl_interest_broadcast(ccnl, i);
     }
 #endif
+    if(!sent_int) {
+            print_send_drop_interest(i->pkt);
+    }
 
     return;
 }
@@ -684,6 +696,8 @@ ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
                          pi->face->faceid, (void*) c->pkt);
 
                 ccnl_send_pkt(ccnl, pi->face, c->pkt);
+
+                print_fwd_data(c->pkt);
 
 
             } else {// upcall to deliver content to local client

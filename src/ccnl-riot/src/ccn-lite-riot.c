@@ -94,7 +94,19 @@ struct ccnl_relay_s ccnl_relay;
 /**
  * @brief Local loopback face
  */
-static struct ccnl_face_s *loopback_face;
+struct ccnl_face_s *loopback_face;
+
+uint32_t app_send_interest=0;
+uint32_t fwd_interest=0;
+uint32_t retrans_send_interest=0;
+uint32_t send_drop_interest=0;
+uint32_t recv_interest=0;
+uint32_t cs_send_data=0;
+uint32_t fwd_data=0;
+uint32_t recv_data=0;
+uint32_t recv_drop_data=0;
+uint32_t app_recv_data=0;
+uint32_t netdev_evt_tx_noack=0;
 
 /**
  * @brief Debugging level
@@ -305,6 +317,8 @@ ccnl_app_RX(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
         gnrc_pktbuf_release(pkt);
     }
 
+    print_app_recv_data(c->pkt);
+
     return 0;
 }
 
@@ -355,6 +369,9 @@ ccnl_interest_retransmit(struct ccnl_relay_s *relay, struct ccnl_interest_s *ccn
     ((evtimer_event_t *)&ccnl_int->evtmsg_retrans)->offset = CCNL_INTEREST_RETRANS_TIMEOUT;
     evtimer_add_msg(&ccnl_evtimer, &ccnl_int->evtmsg_retrans, ccnl_event_loop_pid);
     ccnl_int->retries++;
+
+    //print_retrans_send_interest(ccnl_int->pkt);
+
     ccnl_interest_propagate(relay, ccnl_int);
 }
 
@@ -386,7 +403,11 @@ void
 
             case GNRC_NETAPI_MSG_TYPE_SND:
                 DEBUGMSG(DEBUG, "ccn-lite: GNRC_NETAPI_MSG_TYPE_SND received\n");
+
                 pkt = (struct ccnl_pkt_s *) m.content.ptr;
+
+                print_app_send_interest(pkt);
+
                 ccnl_fwd_handleInterest(ccnl, loopback_face, &pkt, ccnl_ndntlv_cMatch);
                 ccnl_pkt_free(pkt);
                 break;

@@ -35,6 +35,10 @@
 #include "evtimer.h"
 #include "evtimer_msg.h"
 
+#include "net/netstats.h"
+
+#include "ps.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -150,6 +154,11 @@ extern kernel_pid_t ccnl_event_loop_pid;
 #ifndef CCNL_THREAD_PRIORITY
 #define CCNL_THREAD_PRIORITY (THREAD_PRIORITY_MAIN - 1)
 #endif
+
+/**
+ * @brief Local loopback face
+ */
+extern struct ccnl_face_s *loopback_face;
 
 /**
  * Struct holding CCN-Lite's central relay information
@@ -330,6 +339,118 @@ static inline void ccnl_evtimer_set_cs_timeout(struct ccnl_content_s *c)
     c->evtmsg_cstimeout.msg.content.ptr = c->pkt->pfx;
     ((evtimer_event_t *)&c->evtmsg_cstimeout)->offset = CCNL_CONTENT_TIMEOUT * 1000; // ms
     evtimer_add_msg(&ccnl_evtimer, &c->evtmsg_cstimeout, ccnl_event_loop_pid);
+}
+
+extern uint32_t app_send_interest;
+extern uint32_t fwd_interest;
+extern uint32_t retrans_send_interest;
+extern uint32_t send_drop_interest;
+extern uint32_t recv_interest;
+extern uint32_t cs_send_data;
+extern uint32_t fwd_data;
+extern uint32_t recv_data;
+extern uint32_t recv_drop_data;
+extern uint32_t app_recv_data;
+extern uint32_t netdev_evt_tx_noack;
+
+// i/d = interest/data
+// t/v/r: transmit/receive/retransmit
+// a/f/d/c: application/forward/drop/cs hit
+
+#ifndef ON_NRF
+#define PRINT_NAME_OFFSET 16
+#else
+#define PRINT_NAME_OFFSET 1
+#endif
+
+static inline void print_line(char *type, struct ccnl_pkt_s *pkt) {
+    char s[CCNL_MAX_PREFIX_SIZE];
+    // only print last three bytes of mac address as part of name
+    ccnl_prefix_to_str(pkt->pfx, s, CCNL_MAX_PREFIX_SIZE);
+    printf("%s;%lu;%s;%u;%u\n", type, (unsigned long)xtimer_now_usec64(), &s[PRINT_NAME_OFFSET],ccnl_relay.pitcnt, ccnl_relay.contentcnt);
+}
+
+static inline void print_app_send_interest(struct ccnl_pkt_s *pkt) {
+    print_line("ita",pkt);
+    app_send_interest++;
+}
+
+static inline void print_fwd_interest(struct ccnl_pkt_s *pkt) {
+    print_line("itf",pkt);
+    fwd_interest++;
+}
+
+static inline void print_retrans_send_interest(struct ccnl_pkt_s *pkt) {
+    print_line("irf", pkt);
+    retrans_send_interest++;
+}
+
+static inline void print_send_drop_interest(struct ccnl_pkt_s *pkt) {
+    print_line("itd", pkt);
+    send_drop_interest++;
+}
+
+static inline void print_recv_interest(struct ccnl_pkt_s *pkt) {
+    print_line("ivf", pkt);
+    recv_interest++;
+}
+
+static inline void print_cs_send_data(struct ccnl_pkt_s *pkt) {
+    print_line("dtc", pkt);
+    cs_send_data++;
+}
+
+static inline void print_fwd_data(struct ccnl_pkt_s *pkt) {
+    print_line("dtf", pkt);
+    fwd_data++;
+}
+
+static inline void print_recv_drop_data(struct ccnl_pkt_s *pkt) { // not yet tested
+    print_line("dvd", pkt);
+    recv_drop_data++;
+}
+
+static inline void print_recv_data(struct ccnl_pkt_s *pkt) {
+    print_line("dvf", pkt);
+    recv_data++;
+}
+
+static inline void print_app_recv_data(struct ccnl_pkt_s *pkt) {
+    print_line("dva", pkt);
+    app_recv_data++;
+}
+
+static inline void print_accumulated_stats(void) {
+    netstats_t *stats;
+    gnrc_netif_t *netif;
+
+    netif = gnrc_netif_iter(NULL);
+    gnrc_netapi_get(netif->pid, NETOPT_STATS, NETSTATS_LAYER2, &stats,
+        sizeof(&stats));
+
+    printf("STATS;%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";"
+      "%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";"
+      "%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";%" PRIu32";\n",
+        app_send_interest,
+        fwd_interest,
+        retrans_send_interest,
+        recv_interest,
+        send_drop_interest,
+        cs_send_data,
+        fwd_data,
+        recv_drop_data,
+        recv_data,
+        app_recv_data,
+        stats->rx_count,
+        stats->rx_bytes,
+        stats->tx_unicast_count,
+        stats->tx_mcast_count,
+        stats->tx_bytes,
+        stats->tx_success,
+        stats->tx_failed,
+        netdev_evt_tx_noack
+    );
+    ps();
 }
 
 #ifdef __cplusplus
