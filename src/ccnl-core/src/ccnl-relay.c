@@ -31,6 +31,8 @@
 
 #ifdef CCNL_RIOT
 #include "ccn-lite-riot.h"
+#include "thread.h"
+#include "random.h"
 #endif
 
 
@@ -358,6 +360,16 @@ ccnl_interest_remove(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
         i->pending = tmp;
     }
     i2 = i->next;
+
+    ccnl->pitcnt--;
+
+    thread_t *me = (thread_t*) sched_threads[sched_active_pid];
+    for (unsigned int j = 0; j <= me->msg_queue.mask; j++) {
+        if (me->msg_array[j].content.ptr == i) {
+            memset(&(me->msg_array[j]), 0, sizeof(me->msg_array[j]));
+        }
+    }
+
     DBL_LINKED_LIST_REMOVE(ccnl->pit, i);
 
     if (i->pkt) {

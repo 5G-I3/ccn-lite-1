@@ -395,6 +395,10 @@ void
         DEBUGMSG(VERBOSE, "ccn-lite: waiting for incoming message.\n");
         msg_receive(&m);
 
+        if (m.type == 0) {
+            continue;
+        }
+
         switch (m.type) {
             case GNRC_NETAPI_MSG_TYPE_RCV:
                 DEBUGMSG(DEBUG, "ccn-lite: GNRC_NETAPI_MSG_TYPE_RCV received\n");
