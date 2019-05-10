@@ -652,8 +652,8 @@ ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 #endif
 #ifdef USE_SUITE_NDNTLV
         case CCNL_SUITE_NDNTLV:
-            if (!ccnl_i_prefixof_c(i->pkt->pfx, i->pkt->s.ndntlv.minsuffix,
-                       i->pkt->s.ndntlv.maxsuffix, c)) {
+            if (ccnl_i_prefixof_c(i->pkt->pfx, i->pkt->s.ndntlv.minsuffix,
+                       i->pkt->s.ndntlv.maxsuffix, c) < 0) {
                 // XX must also check i->ppkl,
                 i = i->next;
                 continue;
@@ -827,7 +827,8 @@ ccnl_nonce_isDup(struct ccnl_relay_s *relay, struct ccnl_pkt_s *pkt)
     if(CCNL_MAX_NONCES < 0){
         struct ccnl_interest_s *i = NULL;
         for (i = relay->pit; i; i = i->next) {
-            if(buf_equal(i->pkt->s.ndntlv.nonce, pkt->s.ndntlv.nonce)){
+            if(ccnl_prefix_cmp(i->pkt->pfx, NULL, pkt->pfx, CMP_EXACT) &&
+               buf_equal(i->pkt->s.ndntlv.nonce, pkt->s.ndntlv.nonce)){
                 return 1;
             }
         }
