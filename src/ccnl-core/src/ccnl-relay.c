@@ -454,7 +454,11 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
                 ccnl_send_pkt(ccnl, fwd->face, i->pkt);
 
                 // only print fwd here
+#ifndef MULTI_HOP_SINGLEPRODUCER_MODE
                 if (i->from != loopback_face && i->retries == 0) {
+#else
+                if (i->retries == 0) {
+#endif
                     print_fwd_interest(i->pkt);
                 }
                 if(i->retries > 0) {
