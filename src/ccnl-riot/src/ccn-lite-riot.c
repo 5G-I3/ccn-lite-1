@@ -275,7 +275,12 @@ ccnl_ll_TX(struct ccnl_relay_s *ccnl, struct ccnl_if_s *ifc,
                             /* actual sending */
                             DEBUGMSG(DEBUG, " try to pass to GNRC (%i): %p\n", (int) ifc->if_pid, (void*) pkt);
                             rreqtx = xtimer_now_usec();
+#ifdef MODULE_GNRC_ICNLOWPAN_HC
+                            ((gnrc_netif_hdr_t *)hdr->data)->if_pid = ifc->if_pid;
+                            if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_SIXLOWPAN, GNRC_NETREG_DEMUX_CTX_ALL, hdr)) {
+#else
                             if (gnrc_netapi_send(ifc->if_pid, pkt) < 1) {
+#endif
                                 puts("error: unable to send\n");
                                 gnrc_pktbuf_release(pkt);
                                 return;
