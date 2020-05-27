@@ -367,14 +367,8 @@ _receive(struct ccnl_relay_s *ccnl, msg_t *m)
 static void
 ccnl_interest_retransmit(struct ccnl_relay_s *relay, struct ccnl_interest_s *ccnl_int)
 {
-    unsigned long reqtxt1 = 0, reqtxt2 = 0, reqtxt3 = 0;
-    char s[CCNL_MAX_PREFIX_SIZE];
-    (void) reqtxt1;
-    (void) reqtxt2;
-    (void) reqtxt3;
-    (void) s;
-
-    reqtxt1 = xtimer_now_usec();
+    unsigned long reqtxt;
+    (void) reqtxt;
 
     if(ccnl_int->retries >= CCNL_MAX_INTEREST_RETRANSMIT) {
         return;
@@ -386,12 +380,13 @@ ccnl_interest_retransmit(struct ccnl_relay_s *relay, struct ccnl_interest_s *ccn
     //((evtimer_event_t *)&ccnl_int->evtmsg_retrans)->offset = (CCNL_INTEREST_RETRANS_TIMEOUT - 100) + random_uint32_range(0, 200);
     evtimer_add_msg(&ccnl_evtimer, &ccnl_int->evtmsg_retrans, ccnl_event_loop_pid);
     ccnl_int->retries++;
-    reqtxt2 = xtimer_now_usec();
+    reqtxt = xtimer_now_usec();
     ccnl_interest_propagate(relay, ccnl_int);
-    reqtxt3 = xtimer_now_usec();
-    ccnl_prefix_to_str(ccnl_int->pkt->pfx, s, CCNL_MAX_PREFIX_SIZE);
 #if EXP_L2_PRINT==0
-    printf("rreqtx;%lu;%lu;%lu;%lu;%.*s\n", reqtxt1, reqtxt2, rreqtx, reqtxt3, 5, s+19);
+    unsigned i = ccnl_int->pkt->pfx->compcnt - 1;
+    printf("rt;%lu;%.*s\n", reqtxt,
+           (size_t)ccnl_int->pkt->pfx->complen[i],
+           ccnl_int->pkt->pfx->comp[i]);
 #endif
 }
 
