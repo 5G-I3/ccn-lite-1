@@ -259,9 +259,9 @@ ccnl_fwd_handleInterest(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
 
         if (from) {
             if (from->ifndx >= 0) {
-                char s[CCNL_MAX_PREFIX_SIZE];
-                ccnl_prefix_to_str(c->pkt->pfx, s, CCNL_MAX_PREFIX_SIZE);
-                printf("cshit;%.*s\n", 5, s+19);
+                unsigned i = c->pkt->pfx->compcnt - 1;
+                printf("ch;;%.*s\n", (size_t)c->pkt->pfx->complen[i],
+                       c->pkt->pfx->comp[i]);
                 ccnl_send_pkt(relay, from, c->pkt);
             } else {
 #ifdef CCNL_APP_RX 
