@@ -471,7 +471,6 @@ void
                 ccnl_int = (struct ccnl_interest_s *)m.content.ptr;
                 char s[CCNL_MAX_PREFIX_SIZE];
                 ccnl_prefix_to_str(ccnl_int->pkt->pfx, s, CCNL_MAX_PREFIX_SIZE);
-                printf("error;response;%.*s\n", 5, s+19);
                 ccnl_interest_remove(ccnl, ccnl_int);
                 break;
             case CCNL_MSG_FACE_TIMEOUT:
