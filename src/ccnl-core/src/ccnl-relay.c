@@ -530,6 +530,11 @@ ccnl_content_remove(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
         ccnl_free(c->pkt);
     }
     //    ccnl_prefix_free(c->name);
+#ifdef USE_TENTATIVE_CACHE
+    if (c->del_cb) {
+        c->del_cb(c->del_cb_ctx);
+    }
+#endif
 #ifdef CCNL_RIOT
     evtimer_del((evtimer_t *)(&ccnl_evtimer), (evtimer_event_t *)&c->evtmsg_cstimeout);
 #endif
@@ -553,6 +558,18 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     for (cit = ccnl->contents; cit; cit = cit->next) {
         if (ccnl_prefix_cmp(c->pkt->pfx, NULL, cit->pkt->pfx, CMP_EXACT) == 0) {
             DEBUGMSG_CORE(DEBUG, "--- Already in cache ---\n");
+#if USE_TENTATIVE_CACHE
+            if (c->pkt->flags & CCNL_PKT_TENTATIVE) {
+                cit->last_used = c->last_used;
+                if (cit->del_cb) {
+                    cit->del_cb(cit->del_cb_ctx);
+                    cit->del_cb = NULL;
+                    cit->del_cb_ctx = NULL;
+                }
+                ccnl_content_free(c);
+                return cit;
+            }
+#endif
             return NULL;
         }
     }
@@ -952,6 +969,24 @@ ccnl_cs_dump(struct ccnl_relay_s *ccnl)
     (void) s;
 
     while (c) {
+#ifdef USE_TENTATIVE_CACHE
+        if (c->pkt->flags & CCNL_PKT_TENTATIVE) {
+            printf("CS[%u]: [TENTATIVE]", i++);
+            if (c->pkt->pfx) {
+                printf(" %s",
+                       ccnl_prefix_to_str(c->pkt->pfx, s, CCNL_MAX_PREFIX_SIZE));
+            }
+            else {
+                printf(" (nil)");
+            }
+            printf(" [%d]: %.*s\n",
+                   (c->pkt->pfx->chunknum) ?
+                   (signed) *(c->pkt->pfx->chunknum) : -1,
+                   (int) c->pkt->contlen, c->pkt->content);
+            c = c->next;
+            continue;
+        }
+#endif
         printf("CS[%u]: %s [%d]: %.*s\n", i++,
                ccnl_prefix_to_str(c->pkt->pfx,s,CCNL_MAX_PREFIX_SIZE),
                (c->pkt->pfx->chunknum)? (signed) *(c->pkt->pfx->chunknum) : -1,
